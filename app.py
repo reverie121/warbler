@@ -320,8 +320,12 @@ def homepage():
     """
 
     if g.user:
+        user = User.query.get_or_404(g.user.id)
+        following = [u.id for u in user.following]
+        following.append(g.user.id)
         messages = (Message
                     .query
+                    .filter(Message.user_id.in_(following))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
