@@ -8,12 +8,20 @@
       <form method="POST" id="user_form">
         {{ form.hidden_tag() }}
 
-        {% for field in form if field.widget.input_type != 'hidden' and field.name != 'password' %}
-          {% for error in field.errors %}
-            <span class="text-danger">{{ error }}</span>
-          {% endfor %}
-          {{ field(placeholder=field.label.text, class="form-control") }}
-        {% endfor %}
+        {{ form.username.label }}
+        {{ form.username(value=user.username, class="form-control") }}
+
+        {{ form.email.label }}
+        {{ form.email(value=user.email, class="form-control") }}
+
+        {{ form.image_url.label }}
+        {{ form.image_url(value=user.image_url, class="form-control") }}
+
+        {{ form.header_image_url.label }}
+        {{ form.header_image_url(value=user.header_image_url, class="form-control") }}
+
+        {{ form.bio.label }}
+        {{ form.bio(value=user.bio, class="form-control") }}
 
         <p>To confirm changes, enter your password:</p>
         {% if form.password.errors %}
