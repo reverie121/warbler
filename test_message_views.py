@@ -7,6 +7,7 @@
 
 import os
 from unittest import TestCase
+from urllib.parse import urlparse
 
 from models import db, connect_db, Message, User
 
@@ -39,8 +40,8 @@ class MessageViewTestCase(TestCase):
     def setUp(self):
         """Create test client, add sample data."""
 
-        User.query.delete()
-        Message.query.delete()
+        db.drop_all()
+        db.create_all()
 
         self.client = app.test_client()
 
@@ -51,8 +52,9 @@ class MessageViewTestCase(TestCase):
 
         db.session.commit()
 
+
     def test_add_message(self):
-        """Can use add a message?"""
+        """Can user add a message?"""
 
         # Since we need to change the session to mimic logging in,
         # we need to use the changing-session trick:
@@ -61,13 +63,72 @@ class MessageViewTestCase(TestCase):
             with c.session_transaction() as sess:
                 sess[CURR_USER_KEY] = self.testuser.id
 
-            # Now, that session setting is saved, so we can have
-            # the rest of ours test
+            # Now that the session setting is saved
+            # we can have the rest of our tests
 
             resp = c.post("/messages/new", data={"text": "Hello"})
 
             # Make sure it redirects
             self.assertEqual(resp.status_code, 302)
+            self.assertEqual(urlparse(resp.location).path, '/users/1')
 
             msg = Message.query.one()
             self.assertEqual(msg.text, "Hello")
+
+            messages = Message.query.filter(Message.user_id == 1)
+
+            # Confirm new message is associated with user
+            self.assertEqual(messages.count(), 1)
+
+            redir_resp = c.post("/messages/new", data={"text": "Successfully Redirected"}, follow_redirects=True)
+            html = redir_resp.get_data(as_text=True)
+
+            # Confirm that it redirects to correct content
+            self.assertEqual(redir_resp.status_code, 200)
+            self.assertIn('Successfully Redirected', html)
+
+    def test_show_message(self):
+        """Does new message display properly?"""
+
+        with self.client as c:
+            with c.session_transaction() as sess:
+                sess[CURR_USER_KEY] = self.testuser.id
+
+            c.post("/messages/new", data={"text": "Hello"})
+
+            resp = c.get("/messages/1")
+            html = resp.get_data(as_text=True)
+
+            # Make sure it loads the message detail page
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('Hello', html)
+
+
+    def test_del_message(self):
+        """Can user delete a message?"""
+
+        with self.client as c:
+            with c.session_transaction() as sess:
+                sess[CURR_USER_KEY] = self.testuser.id
+
+            c.post("/messages/new", data={"text": "Hello"})
+
+            resp = c.post("/messages/1/delete")
+
+            # Make sure it redirects
+            self.assertEqual(resp.status_code, 302)
+            self.assertEqual(urlparse(resp.location).path, '/users/1')
+
+            c.post("/messages/new", data={"text": "Hello Again"})
+
+            redir_resp = c.post("/messages/2/delete", follow_redirects=True)
+            html = redir_resp.get_data(as_text=True)
+
+            # Confirm that it redirects to correct content
+            self.assertEqual(redir_resp.status_code, 200)
+            self.assertIn('@testuser', html)
+
+            messages = Message.query.filter(Message.user_id == 1)
+
+            # Confirm message has been deleted
+            self.assertEqual(messages.count(), 0)

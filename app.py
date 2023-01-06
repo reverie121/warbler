@@ -261,54 +261,6 @@ def delete_user():
     return redirect("/signup")
 
 
-@app.route('/users/<user_id>/likes')
-def show_user_likes(user_id):
-    """Show the warbles this user likes."""
-
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
-    
-    user = User.query.get_or_404(user_id)
-
-    likes = [like.id for like in user.likes]
-
-    messages = (Message
-                .query
-                .filter(Message.id.in_(likes))
-                .order_by(Message.timestamp.desc())
-                .limit(100)
-                .all())
-
-    return render_template('users/likes.html', user=user, messages=messages)
-
-@app.route('/users/add_like/<msg_id>', methods=['POST'])
-def add_like(msg_id):
-    """Add or remove a like on a message."""
-
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
-
-    message = Message.query.get_or_404(msg_id)
-
-    if message and message.user_id != g.user.id:
-
-        like = Likes.query.filter(Likes.user_id==g.user.id, Likes.message_id==msg_id).first()
-
-        if like:
-            db.session.delete(like)
-            db.session.commit()
-
-        else:
-            new_like = Likes(user_id=g.user.id,message_id=msg_id)
-            
-            db.session.add(new_like)
-            db.session.commit()
-    
-    return redirect('/')
-
-
 ##############################################################################
 # Messages routes:
 
@@ -359,6 +311,59 @@ def messages_destroy(message_id):
 
 
 ##############################################################################
+# Likes routes:
+
+
+@app.route('/users/<user_id>/likes')
+def show_user_likes(user_id):
+    """Show the warbles this user likes."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+    
+    user = User.query.get_or_404(user_id)
+
+    likes = [like.id for like in user.likes]
+
+    messages = (Message
+                .query
+                .filter(Message.id.in_(likes))
+                .order_by(Message.timestamp.desc())
+                .limit(100)
+                .all())
+
+    return render_template('users/likes.html', user=user, messages=messages)
+
+
+@app.route('/users/add_like/<msg_id>', methods=['POST'])
+def add_like(msg_id):
+    """Add or remove a like on a message."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    message = Message.query.get_or_404(msg_id)
+
+    if message and message.user_id != g.user.id:
+
+        like = Likes.query.filter(Likes.user_id==g.user.id, Likes.message_id==msg_id).first()
+
+        if like:
+            db.session.delete(like)
+            db.session.commit()
+
+        else:
+            new_like = Likes(user_id=g.user.id,message_id=msg_id)
+            
+            db.session.add(new_like)
+            db.session.commit()
+    
+    return redirect('/')
+
+
+# ##############################################################################
 # Homepage and error pages
 
 
